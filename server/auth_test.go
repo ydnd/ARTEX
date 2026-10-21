@@ -2,9 +2,14 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // GetSetting 对"键不存在"和"读取出错"的返回值只差一个 error：两种情况 value 都是
@@ -80,5 +85,108 @@ func TestValidatePassword(t *testing.T) {
 				t.Fatalf("validatePassword(%q)=%q, wantErr=%v", tc.pw, got, tc.wantErr)
 			}
 		})
+	}
+}
+
+func TestJWTRequiresExpectedAlgorithmSubjectAndExpiry(t *testing.T) {
+	key := []byte(strings.Repeat("k", 32))
+	for _, tc := range []struct {
+		name   string
+		method jwt.SigningMethod
+		claims jwt.RegisteredClaims
+		want   bool
+	}{
+		{"valid", jwt.SigningMethodHS256, jwt.RegisteredClaims{Subject: "ARTEX", ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour))}, true},
+		{"missing-expiry", jwt.SigningMethodHS256, jwt.RegisteredClaims{Subject: "ARTEX"}, false},
+		{"wrong-subject", jwt.SigningMethodHS256, jwt.RegisteredClaims{Subject: "another-service", ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour))}, false},
+		{"wrong-algorithm", jwt.SigningMethodHS512, jwt.RegisteredClaims{Subject: "ARTEX", ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour))}, false},
+		{"expired", jwt.SigningMethodHS256, jwt.RegisteredClaims{Subject: "ARTEX", ExpiresAt: jwt.NewNumericDate(time.Now().Add(-time.Hour))}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			token, err := jwt.NewWithClaims(tc.method, tc.claims).SignedString(key)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := verifyJWT(token, key); got != tc.want {
+				t.Fatalf("accepted=%v want=%v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestLoginAttemptsUsePeerAddressNotForwardedHeaders(t *testing.T) {
+	s := &Server{}
+	handler := s.requireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(204) }))
+	for i := 0; i < 11; i++ {
+		r := httptest.NewRequest("POST", "/api/auth/login", strings.NewReader(`{}`))
+		r.RemoteAddr = fmt.Sprintf("192.0.2.10:%d", 10000+i)
+		r.Header.Set("X-Forwarded-For", fmt.Sprintf("192.0.2.%d", i+20))
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+		want := 204
+		if i == 10 {
+			want = 429
+		}
+		if w.Code != want {
+			t.Fatalf("attempt %d: status=%d want=%d", i+1, w.Code, want)
+		}
+		if w.Header().Get("Cache-Control") != "no-store" {
+			t.Fatal("auth response can be cached")
+		}
+	}
+}
+
+func TestAuthAttemptWindowExpiresAndStorageIsBounded(t *testing.T) {
+	now := time.Now()
+	limiter := &authAttempts{peers: make(map[string]authWindow)}
+	for i := 0; i < 10; i++ {
+		if !limiter.allow("first", now) {
+			t.Fatal("initial attempt blocked")
+		}
+	}
+	if limiter.allow("first", now) {
+		t.Fatal("exhausted bucket allowed")
+	}
+	if !limiter.allow("first", now.Add(16*time.Minute)) {
+		t.Fatal("expired bucket remained blocked")
+	}
+	for i := 0; i < 5000; i++ {
+		limiter.allow(fmt.Sprint(i), now.Add(16*time.Minute))
+	}
+	if len(limiter.peers) > 4096 {
+		t.Fatal("unbounded peer storage")
+	}
+}
+
+func TestUnknownAuthRoutesRequireAuthentication(t *testing.T) {
+	s := &Server{}
+	called := false
+	handler := s.requireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { called = true }))
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, httptest.NewRequest("POST", "/api/auth/future-sensitive-route", nil))
+	if w.Code != 401 || called {
+		t.Fatalf("unknown auth route exposed: status=%d", w.Code)
+	}
+}
+
+func TestQueryTokensAreRestrictedToEventStreams(t *testing.T) {
+	for _, tc := range []struct {
+		path string
+		want bool
+	}{
+		{"/api/logs/stream?token=sentinel", true},
+		{"/api/exploration/activity/stream?task=1&token=sentinel", true},
+		{"/api/side-questions/123/events?token=sentinel", true},
+		{"/api/workspace/read?path=private.txt&token=sentinel", false},
+		{"/api/auth/change-password?token=sentinel", false},
+	} {
+		r := httptest.NewRequest("GET", tc.path, nil)
+		if got := extractToken(r); (got != "") != tc.want {
+			t.Fatalf("path=%s accepted=%v", tc.path, got != "")
+		}
+	}
+	r := httptest.NewRequest("POST", "/api/logs/stream?token=sentinel", nil)
+	if extractToken(r) != "" {
+		t.Fatal("query token accepted for mutation")
 	}
 }

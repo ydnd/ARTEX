@@ -131,6 +131,9 @@ func ensureDatabase(dsn string) error {
 
 // Open connects, applies the schema (idempotent), and seeds builtin rows.
 func Open(dsn string) (*DB, error) {
+	if _, err := pgconn.ParseConfig(dsn); err != nil {
+		return nil, fmt.Errorf("invalid PostgreSQL connection configuration (credentials redacted)")
+	}
 	if err := ensureDatabase(dsn); err != nil {
 		return nil, err
 	}

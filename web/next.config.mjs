@@ -11,10 +11,11 @@ const nextConfig = {
   // 避免父目录的 lockfile 影响根目录推断及资源路径生成。
   turbopack: { root: fileURLToPath(new URL(".", import.meta.url)) },
   reactCompiler: true,
-  // 允许从局域网 IP 访问 dev 资源（HMR），按需增删。
-  // dev 阶段放开任意 IPv4 来源访问 /_next/* 与 HMR（局域网 IP 变动也不受影响）。
-  // 注意：Next 出于安全禁止裸 "*"，需用分段通配；"*.*.*.*" 匹配任意 IPv4。
-  allowedDevOrigins: ["*.*.*.*"],
+  // 额外开发来源需显式配置；保留 Next.js 默认的来源保护。
+  allowedDevOrigins: (process.env.ARTEX_DEV_ORIGINS ?? "")
+    .split(",")
+    .map((host) => host.trim())
+    .filter(Boolean),
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
   },

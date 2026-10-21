@@ -1,0 +1,5 @@
+# Reviewed legacy mock-data false positives: curl followed by another tool -u.
+# Ignore only these exact historical findings, not files or future changes.
+5962826f2d68b00edd274db0c509a5ae7d1b86d0:web/src/lib/mock/data.ts:curl-auth-user:629
+0ef8561411dd1757e41ba3c45d1436e1fd3774f1:web/src/lib/mock/data.ts:curl-auth-user:252
+0ef8561411dd1757e41ba3c45d1436e1fd3774f1:web/src/lib/mock/data.ts:curl-auth-user:370

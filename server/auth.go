@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -95,11 +97,9 @@ func signJWT(key []byte) (string, error) {
 // verifyJWT returns true when tokenStr is a valid, non-expired HS256 token.
 func verifyJWT(tokenStr string, key []byte) bool {
 	t, err := jwt.Parse(tokenStr, func(t *jwt.Token) (any, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method")
-		}
 		return key, nil
-	})
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
+		jwt.WithExpirationRequired(), jwt.WithSubject("ARTEX"), jwt.WithIssuedAt())
 	return err == nil && t.Valid
 }
 
@@ -112,15 +112,53 @@ func extractToken(r *http.Request) string {
 	if c, err := r.Cookie("artex_token"); err == nil && c.Value != "" {
 		return c.Value
 	}
-	return r.URL.Query().Get("token")
+	if r.Method == http.MethodGet && isEventStream(r.URL.Path) {
+		return r.URL.Query().Get("token")
+	}
+	return ""
+}
+
+func isEventStream(path string) bool {
+	switch path {
+	case "/api/logs/stream", "/api/update/stream", "/api/exploration/activity/stream":
+		return true
+	}
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	return len(parts) == 4 && parts[0] == "api" && parts[1] == "side-questions" && parts[3] == "events"
 }
 
 // requireAuth wraps h with JWT validation.
-// /api/auth/* and /api/health are exempt.
+// Only the exact login/setup/status routes and health are public. Bound failed
+// attempts by the connecting peer, without trusting client-supplied proxy headers.
 func (s *Server) requireAuth(h http.Handler) http.Handler {
+	attempts := &authAttempts{peers: make(map[string]authWindow)}
+	busy := make(chan struct{}, 2)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Referrer-Policy", "no-referrer")
 		p := r.URL.Path
-		if strings.HasPrefix(p, "/api/auth/") || p == "/api/health" {
+		if (p == "/api/auth/login" || p == "/api/auth/init") && r.Method == http.MethodPost {
+			peer, _, err := net.SplitHostPort(r.RemoteAddr)
+			if err != nil {
+				peer = r.RemoteAddr
+			}
+			if !attempts.allow(peer, time.Now()) {
+				w.Header().Set("Retry-After", "900")
+				writeErr(w, http.StatusTooManyRequests, "登录尝试过于频繁，请稍后重试")
+				return
+			}
+			select {
+			case busy <- struct{}{}:
+				defer func() { <-busy }()
+			default:
+				w.Header().Set("Retry-After", "1")
+				writeErr(w, http.StatusTooManyRequests, "认证服务繁忙，请稍后重试")
+				return
+			}
+			r.Body = http.MaxBytesReader(w, r.Body, 4096)
+		}
+		if p == "/api/auth/status" || p == "/api/auth/login" || p == "/api/auth/init" || p == "/api/health" {
 			h.ServeHTTP(w, r)
 			return
 		}
@@ -135,6 +173,44 @@ func (s *Server) requireAuth(h http.Handler) http.Handler {
 		}
 		h.ServeHTTP(w, r)
 	})
+}
+
+type authWindow struct {
+	start time.Time
+	count int
+}
+
+type authAttempts struct {
+	mu     sync.Mutex
+	peers  map[string]authWindow
+	pruned time.Time
+}
+
+func (a *authAttempts) allow(peer string, now time.Time) bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	const window = 15 * time.Minute
+	if now.Sub(a.pruned) >= time.Minute {
+		for key, row := range a.peers {
+			if now.Sub(row.start) >= window {
+				delete(a.peers, key)
+			}
+		}
+		a.pruned = now
+	}
+	row, exists := a.peers[peer]
+	if !exists || now.Sub(row.start) >= window {
+		if !exists && len(a.peers) >= 4096 {
+			return false
+		}
+		row = authWindow{start: now}
+	}
+	if row.count >= 10 {
+		return false
+	}
+	row.count++
+	a.peers[peer] = row
+	return true
 }
 
 // GET /api/auth/status — reports whether the admin password has been initialised.
@@ -206,8 +282,7 @@ func (s *Server) authInit(w http.ResponseWriter, r *http.Request) {
 }
 
 // POST /api/auth/change-password — changes the admin password. Requires a valid
-// token (this route is under /api/auth/* which requireAuth exempts, so the token
-// is validated here) AND the current password.
+// token (also checked here for direct handler calls) AND the current password.
 func (s *Server) authChangePassword(w http.ResponseWriter, r *http.Request) {
 	pg := s.pg(w)
 	if pg == nil {

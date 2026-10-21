@@ -1,0 +1,12 @@
+title = "ARTEX security scan"
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+[[rules.allowlists]]
+description = "Exact synthetic notification credentials in masking regression tests"
+condition = "AND"
+paths = ['''(^|/)(notify/(mask|redact)_test\.go|server/notify_api_test\.go)$''']
+regexTarget = "secret"
+regexes = ['''^(LEAKPROBE0123456789abcdef|abcdef123456|abc123456|SECtest123456|SECabcdef123456)$''']

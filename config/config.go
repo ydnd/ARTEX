@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // Database is the PostgreSQL connection config. Either set DSN directly, or set
@@ -177,16 +179,12 @@ func (d Database) buildDSN() string {
 	return u.String()
 }
 
-// String is a redacted view of the resolved DSN (password masked) for logging.
+// Redact describes only non-secret connection fields. Both URI and keyword DSNs
+// are supported; malformed input must never be echoed into errors or logs.
 func Redact(dsn string) string {
-	u, err := url.Parse(dsn)
+	cfg, err := pgconn.ParseConfig(dsn)
 	if err != nil {
-		return dsn
+		return "[invalid PostgreSQL configuration; credentials redacted]"
 	}
-	if u.User != nil {
-		if _, hasPw := u.User.Password(); hasPw {
-			u.User = url.UserPassword(u.User.Username(), "****")
-		}
-	}
-	return fmt.Sprintf("%s", u.String())
+	return fmt.Sprintf("host=%q port=%d user=%q dbname=%q", cfg.Host, cfg.Port, cfg.User, cfg.Database)
 }

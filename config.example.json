@@ -6,7 +6,7 @@
     "host": "127.0.0.1",
     "port": 5433,
     "user": "artex",
-    "password": "",
+    "password": "REPLACE_WITH_RANDOM_SECRET",
     "dbname": "artex",
     "sslmode": "disable"
   },
@@ -14,7 +14,7 @@
   "_comment_database_dsn": "写法 (B)：删掉上面的 database，改用完整 DSN。dsn 非空时会忽略分字段。",
   "_example_database_dsn": {
     "database": {
-      "dsn": "postgres://user:pass@db.example.com:5432/artex?sslmode=require"
+      "dsn": "postgres://user:REPLACE_WITH_RANDOM_SECRET@db.example.com:5432/artex?sslmode=require"
     }
   },
 
