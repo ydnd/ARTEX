@@ -1,6 +1,6 @@
 # Jiana 安全审计记录（基于 ARTEX）
 
-审计日期：2026-10-21。基线：`e6ec56999175509551a1e43a3ee3b053d0941bd9`。仓库：[ydnd/ARTEX](https://github.com/ydnd/ARTEX)，上游：[Autumn-27/ARTEX](https://github.com/Autumn-27/ARTEX)。原作者、AGPL-3.0 许可和原始历史均保留。
+审计日期：2026-10-21。基线：`e6ec56999175509551a1e43a3ee3b053d0941bd9`。仓库：[ydnd/Jiana](https://github.com/ydnd/Jiana)，上游：[Autumn-27/ARTEX](https://github.com/Autumn-27/ARTEX)。原作者、AGPL-3.0 许可和原始历史均保留。
 
 ## 范围
 

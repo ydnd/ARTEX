@@ -13,15 +13,15 @@
 
 ## Jiana 的来源与安全维护
 
-**Jiana** 基于 [Autumn-27/ARTEX](https://github.com/Autumn-27/ARTEX)，保留原作者署名、Git 历史和 AGPL-3.0 许可证。`ydnd/ARTEX` 的本次工作是文件访问边界、认证、隐私和依赖修复；不代表原项目由本 Fork 创作。修复范围、验证结果和仍存在的限制见 [安全审计记录](SECURITY_AUDIT.md)。
+**Jiana** 基于 [Autumn-27/ARTEX](https://github.com/Autumn-27/ARTEX)，保留原作者署名、Git 历史和 AGPL-3.0 许可证。`ydnd/Jiana` 的本次工作是文件访问边界、认证、隐私和依赖修复；不代表原项目由本 Fork 创作。修复范围、验证结果和仍存在的限制见 [安全审计记录](SECURITY_AUDIT.md)。
 
-名称已更新为 Jiana；为兼容已有配置，程序文件名 `artex`、`ARTEX_*` 环境变量、现有登录用户名 `ARTEX`、cookie 名和 Go 模块路径继续沿用。GitHub 仓库地址目前仍为 `ydnd/ARTEX`。
+名称已更新为 Jiana；为兼容已有配置，程序文件名 `artex`、`ARTEX_*` 环境变量、现有登录用户名 `ARTEX`、cookie 名和 Go 模块路径继续沿用。GitHub 仓库地址已更新为 `ydnd/Jiana`。
 
 使用本次修复需要从本分支源码编译（Go **1.26.10+**、Node.js **24**）。下方原项目安装说明中的上游镜像、上游 Releases 和 Demo 不包含本 Fork 的修复。源码构建方式见下方“方式四”；复制前端时先执行 `mkdir -p server/webui/dist`，再执行 `cp -a web/out/. server/webui/dist/`。
 
 管理界面现在默认只监听 `127.0.0.1:8787`；先在本机完成管理员初始化，远程访问应使用 HTTPS 反向代理。复制 `.env.example` 后，填写独立的随机 `POSTGRES_PASSWORD`（可用 `openssl rand -hex 32` 生成）；不要提交 `.env`、`config.json`、`jwt.key` 或业务数据库。
 
-Docker 使用本次修复时，先编译并准备 `dist/amd64/artex`（ARM64 使用对应架构），运行 `docker build --build-arg TARGETARCH=amd64 -t artex-audited:local .`，然后在 `.env` 设置 `ARTEX_IMAGE=artex-audited`、`ARTEX_TAG=local`。Compose 默认仍是上游镜像；本 Fork 的镜像发布任务保持关闭，需另行配置自己的镜像仓库。一键更新源已改为 `ydnd/ARTEX`，本 Fork 发布 Release 前不会取得上游更新。
+Docker 使用本次修复时，先编译并准备 `dist/amd64/artex`（ARM64 使用对应架构），运行 `docker build --build-arg TARGETARCH=amd64 -t artex-audited:local .`，然后在 `.env` 设置 `ARTEX_IMAGE=artex-audited`、`ARTEX_TAG=local`。Compose 默认仍是上游镜像；本 Fork 的镜像发布任务保持关闭，需另行配置自己的镜像仓库。一键更新源已改为 `ydnd/Jiana`，本 Fork 发布 Release 前不会取得上游更新。
 
 ---
 
