@@ -1,3 +1,5 @@
+import { APP_CONFIG } from "@/config/app-config";
+
 const TOKEN_KEY = "artex_token";
 const COOKIE_MAX_AGE = 7 * 24 * 60 * 60; // 7 天（秒）
 
@@ -39,7 +41,7 @@ export const auth = {
       // base64url → base64
       const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
       const username: string = payload.sub ?? "ARTEX";
-      return { id: "1", name: username, username, email: "", avatar: "", role: "operator" };
+      return { id: "1", name: username === "ARTEX" ? APP_CONFIG.name : username, username, email: "", avatar: "", role: "operator" };
     } catch {
       return null;
     }

@@ -1,4 +1,4 @@
-# ARTEX Fork 安全审计记录
+# Jiana 安全审计记录（基于 ARTEX）
 
 审计日期：2026-10-21。基线：`e6ec56999175509551a1e43a3ee3b053d0941bd9`。仓库：[ydnd/ARTEX](https://github.com/ydnd/ARTEX)，上游：[Autumn-27/ARTEX](https://github.com/Autumn-27/ARTEX)。原作者、AGPL-3.0 许可和原始历史均保留。
 
@@ -38,6 +38,8 @@
 全量回归唯一失败是 `agent.TestGraphOverviewExpandsAssociatedCompanyScope`（`agent/blackboard_inheritance_test.go:87`，缺少 task scope）。在独立 checkout 的未修改基线、另一全新数据库和相同 Go 版本中可复现相同失败；本次没有跳过或修改该测试。`server.TestLiveContextReview` 需要外部模型配置，未提供而跳过。CI 保留完整回归，同时独立运行安全检查，不把现有失败包装为全部通过。
 
 新增 GitHub Actions 验证流程及每周 Dependabot 配置。远端运行结果以仓库 Actions 为准，本地结果不代表远端已经通过。
+
+同日按仓库所有者指定将项目展示名称更新为 **Jiana**，保留 ARTEX 来源与许可证。改名后重新通过前端静态构建、10 项前端测试、npm 审计、`cmd/artex` 包测试、内嵌前端二进制编译与 `-h` 冒烟，以及源码凭据扫描；登录、初始化页面的导出标题和图标也已核对。程序名、环境变量和现有账号标识为兼容原配置继续沿用。
 
 ## 隐私检查与例外
 

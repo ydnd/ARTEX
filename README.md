@@ -1,19 +1,21 @@
 <div align="center">
 
-# ARTEX
+# Jiana
 
-AI 自主渗透测试系统（Go 后端 + Next.js 前端）
+基于 ARTEX 的安全研究控制台（Go 后端 + Next.js 前端）
 
 
-🌐 **在线 Demo**： [https://artex-demo.vercel.app/](https://artex-demo.vercel.app/)
+🌐 **上游 ARTEX 在线 Demo**： [https://artex-demo.vercel.app/](https://artex-demo.vercel.app/)
 
 </div>
 
 ---
 
-## 此 Fork 的安全维护
+## Jiana 的来源与安全维护
 
-本仓库基于 [Autumn-27/ARTEX](https://github.com/Autumn-27/ARTEX)，保留原作者署名、Git 历史和 AGPL-3.0 许可证。`ydnd/ARTEX` 的本次工作是文件访问边界、认证、隐私和依赖修复；不代表原项目由本 Fork 创作。修复范围、验证结果和仍存在的限制见 [安全审计记录](SECURITY_AUDIT.md)。
+**Jiana** 基于 [Autumn-27/ARTEX](https://github.com/Autumn-27/ARTEX)，保留原作者署名、Git 历史和 AGPL-3.0 许可证。`ydnd/ARTEX` 的本次工作是文件访问边界、认证、隐私和依赖修复；不代表原项目由本 Fork 创作。修复范围、验证结果和仍存在的限制见 [安全审计记录](SECURITY_AUDIT.md)。
+
+名称已更新为 Jiana；为兼容已有配置，程序文件名 `artex`、`ARTEX_*` 环境变量、现有登录用户名 `ARTEX`、cookie 名和 Go 模块路径继续沿用。GitHub 仓库地址目前仍为 `ydnd/ARTEX`。
 
 使用本次修复需要从本分支源码编译（Go **1.26.10+**、Node.js **24**）。下方原项目安装说明中的上游镜像、上游 Releases 和 Demo 不包含本 Fork 的修复。源码构建方式见下方“方式四”；复制前端时先执行 `mkdir -p server/webui/dist`，再执行 `cp -a web/out/. server/webui/dist/`。
 
@@ -74,7 +76,9 @@ Docker 使用本次修复时，先编译并准备 `dist/amd64/artex`（ARM64 使
 
 ---
 
-## 安装
+## 原项目安装与使用参考
+
+以下保留上游说明。安装 Jiana 请使用本仓库本分支的源码，编译方法见“方式四”；上游预编译产物不包含 Jiana 的修复。
 
 > 依赖数据库 **PostgreSQL**；探索需配置 **LLM**（`ANTHROPIC_API_KEY` 或 `OPENAI_API_KEY`，也可在 UI 里配）。
 
